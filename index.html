@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-50 text-gray-800 container mx-auto">
   <!-- Contenedor principal de la app -->
   <div id="app" class="max-w-3xl mx-auto p-4">
     <radar-chart></radar-chart>
@@ -21,47 +21,52 @@
       <h1 class="text-3xl font-bold text-center mb-6">Radar Chart Dinámico con Playground</h1>
       <!-- Formulario para agregar categoría y valor -->
       <form @submit.prevent="submitForm" class="flex flex-col md:flex-row items-end gap-4 mb-6">
-        <div class="flex flex-col">
+        <div class="flex flex-col w-full md:w-auto">
           <label class="font-bold mb-1">Categoría</label>
-          <input type="text" v-model="newCategory" placeholder="Ingrese nombre" required class="border border-gray-300 rounded px-3 py-2" />
+          <input type="text" v-model="newCategory" placeholder="Ingrese nombre" required class="border border-gray-300 rounded px-3 py-2 w-full" />
         </div>
-        <div class="flex flex-col">
+        <div class="flex flex-col w-full md:w-auto">
           <label class="font-bold mb-1">Valor (0-100)</label>
-          <input type="number" v-model.number="newValue" min="0" max="100" required class="border border-gray-300 rounded px-3 py-2" />
+          <input type="number" v-model.number="newValue" min="0" max="100" required class="border border-gray-300 rounded px-3 py-2 w-full" />
         </div>
         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Agregar</button>
       </form>
 
-      <table class="w-full table-auto border-collapse mb-6">
-        <thead>
-          <tr class="bg-gray-100">
-            <th class="border border-gray-300 px-3 py-2">Categoría</th>
-            <th class="border border-gray-300 px-3 py-2">Valor</th>
-            <th class="border border-gray-300 px-3 py-2">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(categoria, index) in categorias" :key="index" class="text-center">
-            <td class="border border-gray-300 px-3 py-2">{{ categoria }}</td>
-            <td class="border border-gray-300 px-3 py-2">{{ valores[index] }}</td>
-            <td class="border border-gray-300 px-3 py-2">
-              <button @click="deleteCategory(index)" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Eliminar</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      
-      <div class="mb-6 flex row" v-if="sharedUrl">
-        <button @click=shareUrl class="bg-green-100 p-2 rounded">Share</button>
-        <!-- <input   type="text" :value="sharedUrl" readonly class="w-full border border-gray-300 rounded px-3 py-2" /> -->
-        <div class="p-4">{{sharedUrl}}</div>
+      <!-- Tabla responsiva -->
+      <div class="overflow-x-auto mb-6">
+        <table class="w-full table-auto border-collapse">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-3 py-2">Categoría</th>
+              <th class="border border-gray-300 px-3 py-2">Valor</th>
+              <th class="border border-gray-300 px-3 py-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(categoria, index) in categorias" :key="index" class="text-center">
+              <td class="border border-gray-300 px-3 py-2">{{ categoria }}</td>
+              <td class="border border-gray-300 px-3 py-2">{{ valores[index] }}</td>
+              <td class="border border-gray-300 px-3 py-2">
+                <button @click="deleteCategory(index)" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Eliminar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
+      
+      <!-- Sección de URL compartida responsiva -->
+      <div class="mb-6 flex flex-col md:flex-row items-center gap-4" v-if="sharedUrl">
+        <button @click="shareUrl" class="bg-green-100 p-2 rounded ">Share</button>
+        <div class="p-4 break-words text-ellipsis">{{ sharedUrl }}</div>
+      </div>
+      
       <!-- Contenedor para el gráfico -->
-      <div id="radarChart" class="mx-auto"></div>
+      <div id="radarChart" class="mx-auto w-full"></div>
+      
       <!-- Input para notas -->
       <div class="mb-6">
         <label class="font-bold mb-1 block">Notas</label>
-        <textarea rows=10 type="text" v-model="notes" @input="updateUrl" placeholder="Escribe tus notas aquí..." class="w-full border border-gray-300 rounded px-3 py-2" />
+        <textarea rows="10" v-model="notes" @input="updateUrl" placeholder="Escribe tus notas aquí..." class="w-full border border-gray-300 rounded px-3 py-2"></textarea>
       </div>
     </div>
   </script>
