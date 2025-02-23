@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Radar Chart Dinámico con Playground, Vue 3, ApexCharts y Tailwind</title>
+  <meta http-equiv="Permissions-Policy" content="clipboard-read=(self), clipboard-write=(self)">
+  <!-- Carga Vue 3, ApexCharts y Tailwind CSS desde CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <!-- Contenedor principal de la app -->
+  <div id="app" class="max-w-3xl mx-auto p-4">
+    <radar-chart></radar-chart>
+  </div>
+
+  <!-- Template del componente -->
+  <script type="text/x-template" id="radar-chart-template">
+    <div>
+      <h1 class="text-3xl font-bold text-center mb-6">Radar Chart Dinámico con Playground</h1>
+      <!-- Formulario para agregar categoría y valor -->
+      <form @submit.prevent="submitForm" class="flex flex-col md:flex-row items-end gap-4 mb-6">
+        <div class="flex flex-col">
+          <label class="font-bold mb-1">Categoría</label>
+          <input type="text" v-model="newCategory" placeholder="Ingrese nombre" required class="border border-gray-300 rounded px-3 py-2" />
+        </div>
+        <div class="flex flex-col">
+          <label class="font-bold mb-1">Valor (0-100)</label>
+          <input type="number" v-model.number="newValue" min="0" max="100" required class="border border-gray-300 rounded px-3 py-2" />
+        </div>
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Agregar</button>
+      </form>
+
+      <table class="w-full table-auto border-collapse mb-6">
+        <thead>
+          <tr class="bg-gray-100">
+            <th class="border border-gray-300 px-3 py-2">Categoría</th>
+            <th class="border border-gray-300 px-3 py-2">Valor</th>
+            <th class="border border-gray-300 px-3 py-2">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(categoria, index) in categorias" :key="index" class="text-center">
+            <td class="border border-gray-300 px-3 py-2">{{ categoria }}</td>
+            <td class="border border-gray-300 px-3 py-2">{{ valores[index] }}</td>
+            <td class="border border-gray-300 px-3 py-2">
+              <button @click="deleteCategory(index)" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div class="mb-6 flex row" v-if="sharedUrl">
+        <button @click=shareUrl class="bg-green-100 p-2 rounded">Share</button>
+        <!-- <input   type="text" :value="sharedUrl" readonly class="w-full border border-gray-300 rounded px-3 py-2" /> -->
+        <div class="p-4">{{sharedUrl}}</div>
+      </div>
+      <!-- Contenedor para el gráfico -->
+      <div id="radarChart" class="mx-auto"></div>
+      <!-- Input para notas -->
+      <div class="mb-6">
+        <label class="font-bold mb-1 block">Notas</label>
+        <textarea rows=10 type="text" v-model="notes" @input="updateUrl" placeholder="Escribe tus notas aquí..." class="w-full border border-gray-300 rounded px-3 py-2" />
+      </div>
+    </div>
+  </script>
+
+  <!-- Script principal de la app -->
+  <script type="module">
+    const { createApp, ref, onMounted } = Vue;
+
+    const RadarChart = {
+      template: '#radar-chart-template',
+      setup() {
+        // Estado reactivo para categorías, valores, notas, nuevos datos y URL compartida
+        const categorias = ref(["Español", "Inglés", "Matemáticas"]);
+        const valores = ref([80, 60, 90]);
+        const newCategory = ref("");
+        const newValue = ref(null);
+        const notes = ref("");
+        const sharedUrl = ref("");
+        let chart = null;
+
+        // Funciones para codificar/decodificar el estado en base64
+        function encodeState(state) {
+          const json = JSON.stringify(state);
+          return btoa(unescape(encodeURIComponent(json)));
+        }
+        function decodeState(encoded) {
+          const json = decodeURIComponent(escape(atob(encoded)));
+          return JSON.parse(json);
+        }
+
+        // Actualiza la URL con el estado actual codificado en el query param "playground"
+        function updateUrl() {
+          const state = { 
+            categorias: categorias.value, 
+            valores: valores.value, 
+            notes: notes.value 
+          };
+          const encoded = encodeState(state);
+          const url = new URL(window.location);
+          url.searchParams.set("playground", encoded);
+          window.history.replaceState(null, "", url);
+          sharedUrl.value = url.toString();
+        }
+
+        // Función para copiar la URL actual al portapapeles
+        function shareUrl() {
+          const url = window.location.href;
+          navigator.clipboard.writeText(url)
+            .then(() => {
+              sharedUrl.value = url;
+              alert("Copiado")
+            })
+            .catch((e) => {
+              console.error(e);
+              alert("No se pudo copiar la URL. Por favor, copia manualmente:\n" + url);
+            });
+        }
+
+        // Inicializa el gráfico de radar usando ApexCharts
+        function renderChart() {
+          const options = {
+            chart: {
+              type: 'radar',
+              toolbar: { show: true }
+            },
+            series: [{
+              name: 'Ponderación',
+              data: valores.value
+            }],
+            xaxis: {
+              categories: categorias.value
+            },
+            yaxis: {
+              min: 0,
+              max: 100
+            },
+            title: {
+              text: 'Ejemplo de Gráfico de Radar',
+              align: 'center'
+            }
+          };
+          chart = new ApexCharts(document.querySelector("#radarChart"), options);
+          chart.render();
+        }
+
+        // Actualiza el gráfico cuando se modifican los datos
+        function updateChart() {
+          if (chart) {
+            chart.updateOptions({
+              xaxis: { categories: categorias.value }
+            });
+            chart.updateSeries([{ data: valores.value }]);
+          }
+        }
+
+        // Agrega una nueva categoría y valor
+        function submitForm() {
+          const cat = newCategory.value.trim();
+          const val = parseInt(newValue.value, 10);
+          if (cat && !isNaN(val) && val >= 0 && val <= 100) {
+            categorias.value.push(cat);
+            valores.value.push(val);
+            updateChart();
+            updateUrl();
+            newCategory.value = "";
+            newValue.value = null;
+          } else {
+            alert("Por favor, ingresa datos válidos (nombre de categoría y valor entre 0 y 100).");
+          }
+        }
+
+        // Elimina una categoría y su valor correspondiente
+        function deleteCategory(index) {
+          categorias.value.splice(index, 1);
+          valores.value.splice(index, 1);
+          updateChart();
+          updateUrl();
+        }
+
+        // Descarga la gráfica como imagen PNG
+        function downloadChart() {
+          if (chart) {
+            chart.dataURI().then(({ imgURI }) => {
+              const a = document.createElement("a");
+              a.href = imgURI;
+              a.download = "grafica.png";
+              a.click();
+            });
+          }
+        }
+
+        onMounted(() => {
+          // Si la URL tiene el query param "playground", se hidrata el estado
+          const urlParams = new URLSearchParams(window.location.search);
+          const playgroundParam = urlParams.get("playground");
+          if (playgroundParam) {
+            try {
+              const state = decodeState(playgroundParam);
+              if (state && state.categorias && state.valores) {
+                categorias.value = state.categorias;
+                valores.value = state.valores;
+                if (state.notes) {
+                  notes.value = state.notes;
+                }
+              }
+            } catch (e) {
+              console.error("Error al decodificar el parámetro playground:", e);
+            }
+          }
+          renderChart();
+          updateUrl();
+        });
+
+        return {
+          categorias,
+          valores,
+          newCategory,
+          newValue,
+          notes,
+          sharedUrl,
+          submitForm,
+          shareUrl,
+          deleteCategory,
+          downloadChart,
+          updateUrl
+        };
+      }
+    };
+
+    const app = createApp({});
+    app.component('radar-chart', RadarChart);
+    app.mount('#app');
+  </script>
+</body>
+</html>
